@@ -15,6 +15,18 @@ class DetailController extends PageController
 
     protected function getData(): array
     {
-        return array();
+
+        try
+        {
+            $prod = product::getProductByID($this->dataBase,$_GET["item"]);
+        }
+        catch(Exception $e)
+        {
+            $this->loadOtherPage("404");
+        }
+
+
+        return array("item" => $prod);
+
     }
 }

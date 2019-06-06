@@ -14,16 +14,28 @@ class CatogorieController extends PageController
     {
         $arr = array();
         $searchError = null;
-        if(isset($_GET["search"]))
+        if(isset($_GET["cat"]) && $_GET["cat"])
         {
             try
             {
-                $catogorie = Catogorie::searchCatogorieByName($this->dataBase, $_GET["search"]);
+                $catogorie = Catogorie::searchCatogorieByName($this->dataBase, $_GET["cat"]);
                 $arr = $catogorie->getProducts();
             }
             catch(Exception $e)
             {
                 $searchError = $e->getMessage();
+            }
+        }
+        else if(isset($_GET["search"]))
+        {
+            try
+            {
+                $arr = product::searchProductsByName($this->dataBase, $_GET["search"]);
+            }
+            catch(Exception $e)
+            {
+                $searchError = $e->getMessage();
+
             }
         }
         else

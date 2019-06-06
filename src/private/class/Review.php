@@ -1,11 +1,10 @@
 <?php
 
-require_once "user.php"; 
+require_once "User.php"; 
 
 class Review
 {
     private $text; 
-    private $score; //the score the reviewer gave
 private $author; 
     private $karma; 
     private $date; 
@@ -14,37 +13,58 @@ private $author;
     private $db; 
 
     //date as object not string
-    private function __construct(DataBase $db, int $id, User $author, string $title, string $text, DateTime $date, float $score, int $karma)
+    private function __construct(DataBase $db, int $id, User $author, string $title, string $text, DateTime $date, int $karma)
     {
         $this->author = $author; 
         $this->title = $title; 
         $this->text = $text; 
         $this->date = $date; 
-        $this->score = $score; 
         $this->karma = $karma; 
         $this->id = $id; 
         $this->db = $db; 
     }
 
+    /*public static function getLatestReviews($db, $limit) : array
+    {
+        $array = array();
+        $result = $db->querry("SELECT * FROM review ORDER BY added DESC LIMIT ?", "i", $limit);
+
+
+        $results = $result->get_result();
+
+        //$arr = array();
+        while($row = $results->fetch_assoc())
+        {
+            $item = new Review($db, $row["rating"], $row["title"], $row["body"], $row["added"], $row["author"] );
+
+            array_push($array, $item);
+        }
+
+
+        return $array;
+    }*/
+
     public static function getHomeReviews($db):array
     {
         $arr = array(); 
-        $reviews = $db->querry("SELECT * FROM home_review", "")->get_result(); 
+        $reviews = $db->querry("SELECT * FROM review", "")->get_result(); 
 
         while ($row = $reviews->fetch_assoc())
         {
-            $row = $db->querry("SELECT * FROM review WHERE review_id = ?", "d", $row["review_id"])->get_result()->fetch_assoc();
-
             $author = User::getUserByID($db, $row["author"]); 
 
             $scoreRow = $db->querry("SELECT COUNT(review_id) as 'count', SUM(is_up) as 'ups' FROM review_vote WHERE review_id = ?", "d", $row["review_id"])->get_result()->fetch_assoc(); 
             $downs = $scoreRow["count"]-$scoreRow["ups"]; 
             $karma = $scoreRow["ups"]-$downs; 
 
-            $rev = new Review($db, $row["review_id"], $author, $row["title"], $row["body"], new DateTime(), $row["rating"], $karma); 
+            $rev = new Review($db, $row["review_id"], $author, $row["title"], $row["body"], new DateTime(), $karma); 
 
             array_push($arr, $rev); 
         }
+
+        usort($arr,function($first,$second){
+            return $first->getKarma() < $second->getKarma();
+        });
 
         return $arr; 
     }
@@ -56,12 +76,21 @@ private $author;
         if ($row = $result->fetch_assoc())
         {
             $author = User::getUserByID($db, $row["author"]); 
-            return new Review($db, $row["review_id"], $author, $row["title"], $row["body"], new DateTime(), $row["rating"], 34); 
+            return new Review($db, $row["review_id"], $author, $row["title"], $row["body"], new DateTime(), 34); 
         }
         else
         {
             throw new Exception("review niet gevonden"); 
         }
+    }
+
+    public static function postHomeReview($db, User $user, $title, $body)
+    {
+        $result = $db->querry("DELETE FROM review WHERE author = ?", "i", $user->getId());
+
+        $title = strip_tags($title);
+        $body = strip_tags($body);
+        $db->querry("INSERT INTO review(author, title, body) VALUES(?, ?, ?)", "iss", $user->getId(), $title, $body);
     }
 
     public function getId()
@@ -72,11 +101,6 @@ private $author;
     public function getText()
     {
         return $this->text; 
-    }
-
-    public function getScore()
-    {
-        return $this->score; 
     }
 
     public function getKarma()
